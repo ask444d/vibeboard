@@ -1,6 +1,6 @@
 # VibeBoard — personal tracker for vibe coding
 
-![CI](https://github.com/ask444d/vibeboard/actions/workflows/ci.yml/badge.svg) ![version](https://img.shields.io/badge/version-1.0.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen) ![i18n](https://img.shields.io/badge/i18n-en%20%7C%20ru-blue)
+![CI](https://github.com/ask444d/vibeboard/actions/workflows/ci.yml/badge.svg) ![version](https://img.shields.io/badge/version-1.0.0-blue) ![License](https://img.shields.io/badge/license-MIT-green)[...]
 
 **VibeBoard** is a personal command center for all your coding projects.
 Point it at your `~/Projects` folder — it will discover repositories and show
@@ -70,6 +70,7 @@ Requires Node 20+ (22 recommended). File System Access API is Chromium-only
 
 Local-first: disk is read only after you explicitly pick a folder,
 metadata lives in `localStorage`, code never goes outside.
+
 Agent integrations talk to `localhost` only.
 
 ## Agent integration
@@ -97,6 +98,126 @@ src-tauri/     — desktop build foundation
 ```
 
 Details — `docs/ARCHITECTURE.md`, plans — `ROADMAP.md`.
+
+## Диаграммы данных и состояний
+
+Ниже — компактная версия диаграмм, которые описывают модель данных и основные состояния задач/сессий. Полная версия и дополнения — в `docs/DIAGRAMS.md`.
+
+ER-диаграмма (основные сущности):
+
+```mermaid
+erDiagram
+  PROJECT ||--o{ TASK : contains
+  PROJECT ||--o{ IDEA : owns
+  PROJECT ||--o{ NOTE : owns
+  PROJECT ||--o{ SESSION : tracks
+  PROJECT ||--o{ ACTIVITY : records
+  PROJECT ||--o{ PROJECT_LANGUAGE : analyzes
+
+  PROJECT {
+    string id
+    string code
+    string name
+    string description
+    enum type
+    enum status
+    string local_path
+    number progress
+    string created_at
+    string updated_at
+  }
+
+  TASK {
+    string id
+    string project_id
+    number number
+    string title
+    enum status
+    enum priority
+    string created_at
+    string updated_at
+    string completed_at
+  }
+
+  IDEA {
+    string id
+    string project_id
+    string title
+    string created_at
+    string converted_to_task
+    enum status
+    number votes
+  }
+
+  SESSION {
+    string id
+    string project_id
+    string goal
+    string started_at
+    string ended_at
+    string[] tasks_completed
+    string notes
+    boolean is_paused
+  }
+
+  ACTIVITY {
+    string id
+    string project_id
+    enum type
+    string description
+    string created_at
+  }
+```
+
+State diagram для задач (Task lifecycle):
+
+```mermaid
+stateDiagram-v2
+  [*] --> TODO
+
+  TODO --> IN_PROGRESS: start work
+  TODO --> BLOCKED: blocker
+  TODO --> CANCELLED: cancel
+
+  IN_PROGRESS --> REVIEW: ready for review
+  IN_PROGRESS --> DONE: complete
+  IN_PROGRESS --> BLOCKED: blocked
+
+  REVIEW --> DONE: approved
+  REVIEW --> IN_PROGRESS: continue
+  REVIEW --> BLOCKED: blocked
+
+  BLOCKED --> IN_PROGRESS: unblock
+  BLOCKED --> CANCELLED: cancel
+
+  DONE --> [*]
+  CANCELLED --> [*]
+```
+
+State diagram для сессий (Session lifecycle):
+
+```mermaid
+stateDiagram-v2
+  [*] --> RUNNING
+
+  RUNNING --> PAUSED: togglePauseSession
+  PAUSED --> RUNNING: resume
+
+  RUNNING --> FINISHED: endSession(summary)
+  PAUSED --> FINISHED: endSession(summary)
+
+  FINISHED --> [*]
+```
+
+Ключевые бизнес-правила (коротко):
+
+- Данные хранятся в одном Zustand store: `projects[]`, `tasks[]`, `ideas[]`, `notes[]`, `sessions[]`, `activities[]` и некоторых UI-параметрах.
+- `Task.number` генерируется в рамках проекта (`max + 1`).
+- Когда задача помечается `DONE`, если есть активная сессия, задача добавляется в `session.tasks_completed`.
+- `Idea` можно конвертировать в `Task` (один к одному) — реализовано в `convertIdeaToTask` и `bulkConvertIdeas`.
+- Миграции состояния управляются через `persist` с `version` и функцией `migrate` в `src/store/useStore.ts`.
+
+Полная, подробная версия диаграмм и пояснений: `docs/DIAGRAMS.md`.
 
 ## Contributing
 

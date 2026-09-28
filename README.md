@@ -99,11 +99,9 @@ src-tauri/     — desktop build foundation
 
 Details — `docs/ARCHITECTURE.md`, plans — `ROADMAP.md`.
 
-## Диаграммы данных и состояний
+## Architecture at a glance
 
-Ниже — компактная версия диаграмм, которые описывают модель данных и основные состояния задач/сессий. Полная версия и дополнения — в `docs/DIAGRAMS.md`.
-
-ER-диаграмма (основные сущности):
+### Core domain model
 
 ```mermaid
 erDiagram
@@ -112,19 +110,15 @@ erDiagram
   PROJECT ||--o{ NOTE : owns
   PROJECT ||--o{ SESSION : tracks
   PROJECT ||--o{ ACTIVITY : records
-  PROJECT ||--o{ PROJECT_LANGUAGE : analyzes
 
   PROJECT {
     string id
     string code
     string name
-    string description
-    enum type
-    enum status
+    string type
+    string status
     string local_path
     number progress
-    string created_at
-    string updated_at
   }
 
   TASK {
@@ -132,21 +126,22 @@ erDiagram
     string project_id
     number number
     string title
-    enum status
-    enum priority
-    string created_at
-    string updated_at
-    string completed_at
+    string status
+    string priority
   }
 
   IDEA {
     string id
     string project_id
     string title
-    string created_at
-    string converted_to_task
-    enum status
+    string status
     number votes
+  }
+
+  NOTE {
+    string id
+    string project_id
+    string content
   }
 
   SESSION {
@@ -156,30 +151,31 @@ erDiagram
     string started_at
     string ended_at
     string[] tasks_completed
-    string notes
-    boolean is_paused
   }
 
   ACTIVITY {
     string id
     string project_id
-    enum type
+    string type
     string description
-    string created_at
   }
 ```
 
-State diagram для задач (Task lifecycle):
+- `Project` is the root object for each tracked codebase.
+- `Task`, `Idea`, `Note`, `Session`, and `Activity` are project-scoped records.
+- The app keeps all of them in one Zustand state tree and persists them to `localStorage`.
+
+### Task lifecycle
 
 ```mermaid
 stateDiagram-v2
   [*] --> TODO
 
-  TODO --> IN_PROGRESS: start work
-  TODO --> BLOCKED: blocker
+  TODO --> IN_PROGRESS: start
+  TODO --> BLOCKED: blocked
   TODO --> CANCELLED: cancel
 
-  IN_PROGRESS --> REVIEW: ready for review
+  IN_PROGRESS --> REVIEW: ready
   IN_PROGRESS --> DONE: complete
   IN_PROGRESS --> BLOCKED: blocked
 
@@ -194,30 +190,44 @@ stateDiagram-v2
   CANCELLED --> [*]
 ```
 
-State diagram для сессий (Session lifecycle):
+- Tasks are numbered per project (`#001`, `#002`, ...).
+- Completing a task can auto-link it to the currently active session.
+- Ideas can be converted into tasks without leaving the board.
+
+### Session lifecycle
 
 ```mermaid
 stateDiagram-v2
   [*] --> RUNNING
 
-  RUNNING --> PAUSED: togglePauseSession
+  RUNNING --> PAUSED: pause
   PAUSED --> RUNNING: resume
 
-  RUNNING --> FINISHED: endSession(summary)
-  PAUSED --> FINISHED: endSession(summary)
+  RUNNING --> FINISHED: end session
+  PAUSED --> FINISHED: end session
 
   FINISHED --> [*]
 ```
 
-Ключевые бизнес-правила (коротко):
+- A session tracks goal, notes, elapsed time, and completed tasks.
+- `paused_ms` and `is_paused` keep work time accurate.
+- The final summary is stored when the session ends.
 
-- Данные хранятся в одном Zustand store: `projects[]`, `tasks[]`, `ideas[]`, `notes[]`, `sessions[]`, `activities[]` и некоторых UI-параметрах.
-- `Task.number` генерируется в рамках проекта (`max + 1`).
-- Когда задача помечается `DONE`, если есть активная сессия, задача добавляется в `session.tasks_completed`.
-- `Idea` можно конвертировать в `Task` (один к одному) — реализовано в `convertIdeaToTask` и `bulkConvertIdeas`.
-- Миграции состояния управляются через `persist` с `version` и функцией `migrate` в `src/store/useStore.ts`.
+### Data flow
 
-Полная, подробная версия диаграмм и пояснений: `docs/DIAGRAMS.md`.
+```mermaid
+flowchart LR
+  A[Select folder / add project] --> B[Scan files and repo metadata]
+  B --> C[Detect languages and tech stack]
+  C --> D[Create project record]
+  D --> E[Create tasks, notes, ideas, sessions]
+  E --> F[Recalculate progress and health]
+  F --> G[Persist to localStorage]
+```
+
+This is the real app pattern in `src/store/useStore.ts`: one persisted root store, not a heavy relational database, with rich local-first domain state.
+
+For full architecture notes, migrations, and richer diagrams, see `docs/DIAGRAMS.md`.
 
 ## Contributing
 

@@ -99,9 +99,9 @@ src-tauri/     — desktop build foundation
 
 Details — `docs/ARCHITECTURE.md`, plans — `ROADMAP.md`.
 
-## Architecture at a glance
+## Architecture overview
 
-### Core domain model
+### Product model
 
 ```mermaid
 erDiagram
@@ -161,9 +161,21 @@ erDiagram
   }
 ```
 
-- `Project` is the root object for each tracked codebase.
-- `Task`, `Idea`, `Note`, `Session`, and `Activity` are project-scoped records.
-- The app keeps all of them in one Zustand state tree and persists them to `localStorage`.
+VibeBoard is built around one main entity: `Project`. Everything else — tasks, ideas, notes, sessions, and activity — is a project-scoped record. The app keeps that domain in a single persisted Zustand store and syncs it with local storage.
+
+### Workflow
+
+```mermaid
+flowchart LR
+  A[Choose folder / add project] --> B[Scan files and repo metadata]
+  B --> C[Detect languages and stack]
+  C --> D[Create project record]
+  D --> E[Create tasks, ideas, notes, sessions]
+  E --> F[Recalculate progress and health]
+  F --> G[Persist locally]
+```
+
+The workflow is intentionally local-first: discover a project, analyze what is real, keep the data on device, and only then surface it in the UI.
 
 ### Task lifecycle
 
@@ -175,7 +187,7 @@ stateDiagram-v2
   TODO --> BLOCKED: blocked
   TODO --> CANCELLED: cancel
 
-  IN_PROGRESS --> REVIEW: ready
+  IN_PROGRESS --> REVIEW: ready for review
   IN_PROGRESS --> DONE: complete
   IN_PROGRESS --> BLOCKED: blocked
 
@@ -190,9 +202,7 @@ stateDiagram-v2
   CANCELLED --> [*]
 ```
 
-- Tasks are numbered per project (`#001`, `#002`, ...).
-- Completing a task can auto-link it to the currently active session.
-- Ideas can be converted into tasks without leaving the board.
+A task is the execution unit of the product. It is numbered per project, tracked through status changes, and can automatically be linked to the active session when completed.
 
 ### Session lifecycle
 
@@ -209,25 +219,9 @@ stateDiagram-v2
   FINISHED --> [*]
 ```
 
-- A session tracks goal, notes, elapsed time, and completed tasks.
-- `paused_ms` and `is_paused` keep work time accurate.
-- The final summary is stored when the session ends.
+Sessions represent a focused work block: goal, notes, elapsed time, and tasks closed during that run. This is how VibeBoard connects “doing the work” with “tracking what happened”.
 
-### Data flow
-
-```mermaid
-flowchart LR
-  A[Select folder / add project] --> B[Scan files and repo metadata]
-  B --> C[Detect languages and tech stack]
-  C --> D[Create project record]
-  D --> E[Create tasks, notes, ideas, sessions]
-  E --> F[Recalculate progress and health]
-  F --> G[Persist to localStorage]
-```
-
-This is the real app pattern in `src/store/useStore.ts`: one persisted root store, not a heavy relational database, with rich local-first domain state.
-
-For full architecture notes, migrations, and richer diagrams, see `docs/DIAGRAMS.md`.
+For complete architecture notes, migration details, and additional diagrams, see `docs/DIAGRAMS.md`.
 
 ## Contributing
 

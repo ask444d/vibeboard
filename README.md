@@ -45,6 +45,12 @@ Everything runs locally, no code ever leaves your machine.
 - Dark/light theme, EN/RU interface, PWA + offline
 - Project export/import as JSON, demo data on demand
 
+## Screenshots
+
+![Overview](docs/screenshots/overview.png)
+![Kanban board](docs/screenshots/board.png)
+![Project page](docs/screenshots/project.png)
+
 ## Quick start
 
 ```bash

@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { Project, Task, Idea, Note, Session, Activity, ProjectType, ProjectStatus, TaskStatus, TaskPriority } from '../lib/types'
 import { generateProjectCode, calcProgress, uid, nowIso, analyzeLanguages, detectTechStack, analyzeLanguagesFromHandle, newestCommitIso, type ScannedProject } from '../lib/utils'
 import { readGitHistory } from '../lib/git'
-import { registerHandle } from '../lib/watch'
+import { registerHandle, registerNativeRoot } from '../lib/watch'
 import { safeGet, safeSet } from '../lib/storage'
 import { createSeedData } from '../lib/seed'
 
@@ -41,7 +41,7 @@ interface AppState {
   searchQuery: string
   // actions
   setFolder: (path:string)=>void
-  scanProjects: (found:{name:string, files:string[], packageJson?:any, hasGit:boolean, vfiles?:ScannedProject['vfiles'], gitHistory?:ScannedProject['gitHistory']}[])=>void
+  scanProjects: (found:{name:string, files:string[], packageJson?:any, hasGit:boolean, vfiles?:ScannedProject['vfiles'], gitHistory?:ScannedProject['gitHistory']}[], opts?:{rootPath?:string})=>void
   addProject: (data:{name:string,type:ProjectType,description:string,status:ProjectStatus, local_path?:string})=>Project
   addProjectFromFolder: (info:{name:string, files:string[], packageJson?:any, hasGit:boolean, customPath?:string, vibeConfig?:any, languages?:any[], vfiles?:ScannedProject['vfiles'], gitHistory?:ScannedProject['gitHistory']})=>Project
   addProjectFromHandle: (handle:any, customPath?:string)=>Promise<Project>
@@ -92,10 +92,12 @@ export const useStore = create<AppState>()(persist((set,get)=>({
   searchQuery: '',
 
   setFolder: (path)=> set({ folder:path, hasOnboarded:true }),
-  scanProjects: (found)=>{
+  scanProjects: (found, opts)=>{
     const { projects } = get()
     const newProjects: Project[] = []
     const nowAdd: Activity[] = []
+    // Нативный корень Tauri: реальные пути для local_path + регистрация watch-корней
+    const rootPath = opts?.rootPath?.replace(/[\\/]+$/, '') || null
     for(const f of found){
       if(projects.some(p=> p.name.toLowerCase()===f.name.toLowerCase()) || newProjects.some(p=> p.name.toLowerCase()===f.name.toLowerCase())) continue
       // infer type from name/tech
@@ -121,7 +123,7 @@ export const useStore = create<AppState>()(persist((set,get)=>({
         description: f.packageJson?.description ?? '',
         type,
         status: 'PLANNING',
-        local_path: `${get().folder ?? '~/Projects'}/${f.name}`,
+        local_path: rootPath ? `${rootPath}/${f.name}` : `${get().folder ?? '~/Projects'}/${f.name}`,
         progress: 0,
         created_at: nowIso(),
         updated_at: nowIso(),
@@ -136,6 +138,7 @@ export const useStore = create<AppState>()(persist((set,get)=>({
         technologies: techs,
       }
       langs.forEach(l=> l.project_id = p.id)
+      if (rootPath) { try{ registerNativeRoot(p.id, `${rootPath}/${f.name}`) }catch{} }
       newProjects.push(p)
       nowAdd.push({ id:uid(), project_id:p.id, type:'project_scanned', description:`Discovered project ${p.code} ${p.name}`, created_at: nowIso() })
     }

@@ -5,6 +5,24 @@ export interface GitCommit { oid:string, author:string, message:string, timestam
 const MAX_HEAD_BYTES = 256 * 1024
 const LOG_RE = /^([0-9a-f]{4,40}) ([0-9a-f]{4,40}) (.+?) (\d{9,12}) ([+-]\d{4})\t(.*)$/
 
+// Чистый парсер .git/logs/HEAD — переиспользуется и нативным Tauri-сканом
+export function parseGitLogText(text: string): GitCommit[] {
+  if (!text.trim()) return []
+  const lines = text.trim().split('\n').slice(-20).reverse()
+  const out: GitCommit[] = []
+  for (const l of lines) {
+    const m = LOG_RE.exec(l)
+    if(!m) continue
+    const oid = m[2].slice(0,7)
+    const authorRaw = m[3]
+    const ts = parseInt(m[4],10)
+    if (!Number.isFinite(ts)) continue
+    const author = authorRaw.split('<')[0].trim() || authorRaw.split(' ')[0] || 'unknown'
+    out.push({ oid, author: author.slice(0,60), message: (m[6] || 'commit').slice(0,200), timestamp: ts*1000 })
+  }
+  return out
+}
+
 export async function readGitHistory(handle: FileSystemDirectoryHandleLike | null | undefined): Promise<GitCommit[]> {
   try{
     if (!handle?.getDirectoryHandle) return []
@@ -17,20 +35,7 @@ export async function readGitHistory(handle: FileSystemDirectoryHandleLike | nul
     const file = await headFile.getFile()
     if (!Number.isFinite(file.size) || file.size <= 0 || file.size > MAX_HEAD_BYTES) return []
     const text = await file.text()
-    if (!text.trim()) return []
-    const lines = text.trim().split('\n').slice(-20).reverse()
-    const out: GitCommit[] = []
-    for (const l of lines) {
-      const m = LOG_RE.exec(l)
-      if(!m) continue
-      const oid = m[2].slice(0,7)
-      const authorRaw = m[3]
-      const ts = parseInt(m[4],10)
-      if (!Number.isFinite(ts)) continue
-      const author = authorRaw.split('<')[0].trim() || authorRaw.split(' ')[0] || 'unknown'
-      out.push({ oid, author: author.slice(0,60), message: (m[6] || 'commit').slice(0,200), timestamp: ts*1000 })
-    }
-    return out
+    return parseGitLogText(text)
   }catch{ return [] }
 }
 

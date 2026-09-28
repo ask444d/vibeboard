@@ -4,7 +4,7 @@
 
 | Version | Supported |
 | ------- | --------- |
-| 0.1.x (MVP) | ✅ |
+| 0.1.x | ✅ |
 
 VibeBoard is local-first — code never leaves the device without explicit user action (File System Access API, `vscode://`, `localStorage`). No backend stores code.
 

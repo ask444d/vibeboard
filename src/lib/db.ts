@@ -1,6 +1,6 @@
 // Dexie/IndexedDB foundation for VibeBoard — ready for Tauri SQLite migration
 // Сейчас Zustand persist на localStorage; этот модуль готовит схему для будущего Dexie + SQLite.
-// Не импортируется по умолчанию, чтобы не тянуть зависимость в MVP, но структура описана.
+// Не импортируется по умолчанию, чтобы не тянуть зависимость в основной бандл, но структура описана.
 
 export const DB_SCHEMA = `
 -- SQLite (Tauri) / Dexie (Browser) unified schema — соответствует src/lib/types.ts

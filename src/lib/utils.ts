@@ -101,8 +101,10 @@ export function analyzeLanguages(files: VirtualFile[]): ProjectLanguage[] {
   return arr
 }
 
-type PkgJson = { dependencies?: Record<string,string>; devDependencies?: Record<string,string> }
-const MAX_JSON_BYTES = 512 * 1024
+export type PkgJson = { dependencies?: Record<string,string>; devDependencies?: Record<string,string>; description?: string }
+
+export const PROJECT_MARKERS = ['.git','package.json','pubspec.yaml','Cargo.toml','requirements.txt','pyproject.toml','go.mod','pom.xml','build.gradle','build.gradle.kts','Gemfile','composer.json']
+export const MAX_JSON_BYTES = 512 * 1024
 export function safeParseJson(txt:string): unknown {
   if (txt.length > MAX_JSON_BYTES) return null
   try { return JSON.parse(txt) } catch { return null }
@@ -156,7 +158,7 @@ export function detectTechStack(fileNames: string[], packageJson?: PkgJson | nul
 // Возвращает реальные данные: vfiles (для честного анализа языков) и gitHistory.
 // Никакой синтетики и рандома — чего нет, того нет (пустые массивы).
 import { readGitHistory, type GitCommit } from './git'
-export interface ScannedProject { name:string; files:string[]; packageJson?:PkgJson; hasGit:boolean; vfiles:VirtualFile[]; gitHistory:GitCommit[] }
+export interface ScannedProject { name:string; files:string[]; packageJson?:PkgJson; hasGit:boolean; vfiles:VirtualFile[]; gitHistory:GitCommit[]; vibeConfig?:VibeConfig|null }
 
 async function deepScanDir(dir:any): Promise<{vfiles:VirtualFile[]; gitHistory:GitCommit[]}>{
   let vfiles: VirtualFile[] = []
@@ -198,9 +200,8 @@ export async function scanDirectoryHandle(handle: any): Promise<{projectsFound:S
         }
       }
       // consider project only if has marker — пустые папки без маркеров не проекты
-      const markers = ['.git','package.json','pubspec.yaml','Cargo.toml','requirements.txt','pyproject.toml','go.mod','pom.xml','build.gradle','build.gradle.kts','Gemfile','composer.json']
       const fileSet = new Set(files)
-      const isProject = hasGit || markers.some(m=> fileSet.has(m))
+      const isProject = hasGit || PROJECT_MARKERS.some(m=> fileSet.has(m))
       if(isProject){
         const { vfiles, gitHistory } = await deepScanDir(dir)
         results.push({ name: dir.name, files, packageJson: pkg, hasGit, vfiles, gitHistory })
@@ -283,6 +284,20 @@ export async function analyzeLanguagesFromHandle(handle:any): Promise<VirtualFil
 
 export interface VibeConfig { name?: string; type?: ProjectType; status?: import('./types').ProjectStatus; code?: string; description?: string; local_path?: string }
 const VIBE_TYPES = new Set(['WEB','APP','GAME','BOT','AI','TOOL','OTHER'])
+// Чистый парсер .vibeboard.json — переиспользуется и нативным Tauri-сканом
+export function parseVibeConfigText(txt: string): VibeConfig | null {
+  if (txt.length > MAX_JSON_BYTES) return null
+  const parsed = safeParseJson(txt)
+  if (!parsed || typeof parsed !== 'object') return null
+  const p = parsed as Record<string, unknown>
+  const out: VibeConfig = {}
+  if (typeof p.name === 'string') out.name = p.name.slice(0,80)
+  if (typeof p.type === 'string' && VIBE_TYPES.has(p.type)) out.type = p.type as ProjectType
+  if (typeof p.code === 'string' && /^(WEB|APP|GAME|BOT|AI|TOOL|OTHER)-\d{3}$/.test(p.code)) out.code = p.code
+  if (typeof p.description === 'string') out.description = p.description.slice(0,500)
+  if (typeof p.local_path === 'string') out.local_path = p.local_path.slice(0,300)
+  return out
+}
 export async function readVibeConfig(handle:any): Promise<VibeConfig|null>{
   try{
     for await (const e of handle.values()){
@@ -290,16 +305,7 @@ export async function readVibeConfig(handle:any): Promise<VibeConfig|null>{
         const f=await e.getFile()
         if (f.size > MAX_JSON_BYTES) return null
         const txt=await f.text()
-        const parsed = safeParseJson(txt)
-        if (!parsed || typeof parsed !== 'object') return null
-        const p = parsed as Record<string, unknown>
-        const out: VibeConfig = {}
-        if (typeof p.name === 'string') out.name = p.name.slice(0,80)
-        if (typeof p.type === 'string' && VIBE_TYPES.has(p.type)) out.type = p.type as ProjectType
-        if (typeof p.code === 'string' && /^(WEB|APP|GAME|BOT|AI|TOOL|OTHER)-\d{3}$/.test(p.code)) out.code = p.code
-        if (typeof p.description === 'string') out.description = p.description.slice(0,500)
-        if (typeof p.local_path === 'string') out.local_path = p.local_path.slice(0,300)
-        return out
+        return parseVibeConfigText(txt)
       }
     }
   }catch{}

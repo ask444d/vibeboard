@@ -1,0 +1,38 @@
+name: Release (macOS)
+
+# Релизные .dmg собираются по тегу: git tag v1.0.0 && git push origin v1.0.0
+# macos-latest = Apple Silicon, macos-15-intel = Intel. Черновик релиза создаётся автоматически.
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            arch: arm64
+          - os: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - run: npm test -- --run
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'VibeBoard ${{ github.ref_name }} (${{ matrix.arch }})'
+          releaseBody: 'Desktop builds for macOS. See README for details.'
+          releaseDraft: true
+          prerelease: false

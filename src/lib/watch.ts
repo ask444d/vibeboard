@@ -1,4 +1,5 @@
-import { analyzeLanguages, analyzeLanguagesFromHandle } from './utils'
+import { analyzeLanguages, analyzeLanguagesFromHandle, type VirtualFile } from './utils'
+import { collectNativeVfiles } from './tauriFs'
 import type { Project } from './types'
 import type { FileSystemDirectoryHandleLike } from './fsTypes'
 
@@ -6,8 +7,15 @@ export const WATCH_POLL_MS = 10000
 const SKIP_PARTS = new Set(['node_modules','.git','dist','build'])
 
 const handles = new Map<string, FileSystemDirectoryHandleLike>()
+// Нативные корни Tauri-десктопа (обычные пути, без File System Access)
+const nativeRoots = new Map<string, string>()
 const observers = new Map<string, { disconnect(): void }>()
 const pollers = new Map<string, number>()
+
+export function registerNativeRoot(projectId: string, rootPath: string) {
+  if (!rootPath) return
+  nativeRoots.set(projectId, rootPath)
+}
 let dbPromise: Promise<IDBDatabase> | null = null
 
 function getDb(): Promise<IDBDatabase> | null {
@@ -85,11 +93,17 @@ export function watchProject(
   onError?: (e: unknown)=>void
 ){
   const handle = handles.get(project.id)
-  if(!handle) return ()=>{}
+  const nativeRoot = nativeRoots.get(project.id)
+  if(!handle && !nativeRoot) return ()=>{}
+
+  const collect = async (): Promise<VirtualFile[]> => {
+    if (handle) return analyzeLanguagesFromHandle(handle)
+    return collectNativeVfiles(nativeRoot!)
+  }
 
   const refresh = async () => {
     try{
-      const vfiles = await analyzeLanguagesFromHandle(handle)
+      const vfiles = await collect()
       if(vfiles.length){
         const langs = analyzeLanguages(vfiles)
         onChange({ languages: langs.map(l=> ({...l, project_id: project.id})), updated_at: new Date().toISOString() })
@@ -101,7 +115,8 @@ export function watchProject(
   const debounced = debounce(refresh, 300)
 
   const Observer = (window as unknown as { FileSystemObserver?: new (cb:(r: Array<{relativePathComponents?: string[]}>)=>void)=>{ observe(h: unknown, o: unknown): void; disconnect(): void } }).FileSystemObserver
-  if(Observer){
+  // FileSystemObserver работает только с хэндлами; нативные пути сразу идут в polling
+  if(Observer && handle){
     try{
       const obs = new Observer((records)=>{
         for(const r of records){
@@ -121,7 +136,7 @@ export function watchProject(
   const tick = async ()=>{
     if (stopped) return
     try{
-      const vfiles = await analyzeLanguagesFromHandle(handle)
+      const vfiles = await collect()
       const hash = hashFiles(vfiles)
       if(hash !== lastHash){
         lastHash = hash
@@ -151,5 +166,5 @@ export function isWatching(projectId:string){
   return observers.has(projectId) || pollers.has(projectId)
 }
 export function hasHandle(projectId:string){
-  return handles.has(projectId)
+  return handles.has(projectId) || nativeRoots.has(projectId)
 }

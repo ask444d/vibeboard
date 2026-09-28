@@ -35,6 +35,6 @@ FileSystemHandle (user gesture)
 See `src/lib/plugins.ts` — register new `file → techs` without forking.
 
 ## Decisions (ADRs)
-- Zustand persist over Dexie for MVP — smaller bundle, easy migrate via `version`.
+- Zustand persist over Dexie for v0.1 — smaller bundle, easy migrate via `version`.
 - Synthetic languages fallback when handle not traversable (Safari).
 - Kanban drag via native HTML5, not library — keeps bundle 410kB.

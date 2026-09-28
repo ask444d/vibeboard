@@ -11,8 +11,11 @@ Public roadmap mirrors `GitHub Projects` board (same Kanban as `Tasks`).
 - Global search with jump-to-card, OpenCode/Claude agent hooks, export/import, PWA
 
 ## 1.1 Desktop (Tauri)
+- [x] Tauri v2 init: `src-tauri/` (Cargo, capabilities, icons), `npm run tauri dev/build`
+- [x] Native folder pick + scan via plugin-fs/dialog (`src/lib/tauriFs.ts`), native watch roots
+- [x] Native `open` in Finder/Editor via plugin-shell/opener (`src/lib/tauri.ts`)
+- [x] CI `.dmg` for macOS arm64 + x64 on tags `v*` (draft release)
 - [ ] `src-tauri/tauri.conf.json` → SQLite (`src/lib/db.ts` schema) replaces `localStorage`
-- [ ] Native `open` in Finder/Terminal/Editor via `src/lib/tauri.ts`
 - [ ] `y-crdt` sync over LAN (Tauri)
 
 ## 1.2 Ecosystem

@@ -5,6 +5,9 @@ import type { ProjectStatus, ProjectType } from '../lib/types'
 import { useSearchParams } from 'react-router-dom'
 import { useT } from '../lib/useT'
 import { readFolderHandle, scanDirectoryHandle } from '../lib/utils'
+import { isTauri } from '../lib/tauri'
+import { tauriPickFolder, scanNativeFolder, scanNativeProject } from '../lib/tauriFs'
+import { registerNativeRoot } from '../lib/watch'
 
 export function ProjectsPage(){
   const projects = useStore(s=>s.projects)
@@ -21,11 +24,33 @@ export function ProjectsPage(){
   const [scanningRoot, setScanningRoot]=useState(false)
   const [scanFound, setScanFound]=useState<{name:string, files:string[], hasGit:boolean, packageJson?:any}[]|null>(null)
   const [scanSelected, setScanSelected]=useState<Set<string>>(new Set())
+  const [scanRootPath, setScanRootPath]=useState<string|null>(null)
   const [searchParams]=useSearchParams()
   const urlFilter = searchParams.get('filter') as ProjectStatus|'ALL'|null
   const activeFilter = (urlFilter ?? filter) as ProjectStatus|'ALL'
 
   const handleScanRoot = async()=>{
+    // Десктоп: нативный диалог + чтение через plugin-fs (в WebKit нет File System Access)
+    if(isTauri()){
+      try{
+        const root = await tauriPickFolder()
+        if(!root) return
+        setScanningRoot(true)
+        setFolder(root)
+        setScanRootPath(root)
+        const { projectsFound } = await scanNativeFolder(root)
+        if(!projectsFound.length){
+          alert('No projects found — create one manually via + New project')
+        }
+        setScanFound(projectsFound)
+        setScanSelected(new Set(projectsFound.map(p=>p.name)))
+      }catch(e:any){
+        alert(e?.message ?? 'Failed to read folder')
+      }finally{
+        setScanningRoot(false)
+      }
+      return
+    }
     if('showDirectoryPicker' in window){
       try{
         // @ts-ignore
@@ -46,6 +71,17 @@ export function ProjectsPage(){
   }
 
   const handleAddFolder = async()=>{
+    // Десктоп: нативный диалог, реальный скан, регистрация watch-корня
+    if(isTauri()){
+      try{
+        const path = await tauriPickFolder()
+        if(!path) return
+        const info = await scanNativeProject(path)
+        const created = addProjectFromFolder({ ...info, customPath: path })
+        registerNativeRoot(created.id, path)
+      }catch(e:any){ alert(e?.message ?? 'Failed to add project') }
+      return
+    }
     if('showDirectoryPicker' in window){
       try{
         // @ts-ignore
@@ -166,7 +202,7 @@ export function ProjectsPage(){
           </div>
           <div className="mt-3 flex justify-end gap-2">
             <button onClick={()=> setScanFound(null)} className="px-3 py-1.5 rounded-xl border text-sm">{t('common.cancel')}</button>
-            <button onClick={()=>{ const toAdd = scanFound.filter(f=> scanSelected.has(f.name)); scanProjects(toAdd as any); setScanFound(null)}} className="px-4 py-1.5 rounded-xl bg-violet-600 text-white text-sm">Добавить выбранные ({scanSelected.size})</button>
+            <button onClick={()=>{ const toAdd = scanFound.filter(f=> scanSelected.has(f.name)); scanProjects(toAdd as any, scanRootPath ? { rootPath: scanRootPath } : undefined); setScanFound(null); setScanRootPath(null)}} className="px-4 py-1.5 rounded-xl bg-violet-600 text-white text-sm">Добавить выбранные ({scanSelected.size})</button>
           </div>
         </div>
       )}

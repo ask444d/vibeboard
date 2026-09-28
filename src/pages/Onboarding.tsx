@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
 import { scanDirectoryHandle } from '../lib/utils'
+import { isTauri } from '../lib/tauri'
+import { tauriPickFolder, scanNativeFolder } from '../lib/tauriFs'
 
 export function Onboarding({ onDone }: {onDone:()=>void}){
   const setFolder = useStore(s=>s.setFolder)
@@ -10,9 +12,32 @@ export function Onboarding({ onDone }: {onDone:()=>void}){
   const [selected, setSelected]=useState<Set<string>>(new Set())
   const [path, setPath]=useState('~/Projects')
   const [error, setError]=useState<string|null>(null)
+  const [nativeRoot, setNativeRoot]=useState<string|null>(null)
 
   const handleSelectFolder = async()=>{
     setError(null)
+    // Десктоп: нативный диалог (в WebKit нет File System Access API)
+    if(isTauri()){
+      try{
+        const root = await tauriPickFolder()
+        if(!root) return
+        setScanning(true)
+        setPath(root)
+        setNativeRoot(root)
+        const { projectsFound } = await scanNativeFolder(root)
+        if(!projectsFound.length){
+          setError('No projects found in selected folder. Create one manually or try another folder.')
+        }
+        setFound(projectsFound)
+        setSelected(new Set(projectsFound.map(p=>p.name)))
+        setScanning(false)
+        return
+      }catch(e:any){
+        setError(e?.message ?? 'Failed to read folder')
+        setScanning(false)
+        return
+      }
+    }
     if('showDirectoryPicker' in window){
       try{
         // @ts-ignore
@@ -40,8 +65,13 @@ export function Onboarding({ onDone }: {onDone:()=>void}){
   const handleAdd = ()=>{
     if(!found) return
     const toAdd = found.filter(f=> selected.has(f.name))
-    setFolder(`~/${path}`)
-    scanProjects(toAdd as any)
+    if(nativeRoot){
+      setFolder(nativeRoot)
+      scanProjects(toAdd as any, { rootPath: nativeRoot })
+    } else {
+      setFolder(`~/${path}`)
+      scanProjects(toAdd as any)
+    }
     onDone()
   }
 

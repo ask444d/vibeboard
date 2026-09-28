@@ -4,6 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Fixed port: Tauri devUrl (tauri.conf.json) points here
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
   plugins: [
     react(),
     VitePWA({

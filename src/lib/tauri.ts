@@ -1,3 +1,6 @@
+import { open as shellOpen } from '@tauri-apps/plugin-shell'
+import { openPath as openerOpenPath, revealItemInDir } from '@tauri-apps/plugin-opener'
+
 export const isTauri = () =>
   typeof window !== 'undefined' &&
   !!((window as unknown as { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown }).__TAURI__ ||
@@ -21,52 +24,52 @@ function sanitizeLocalPath(path: string): string | null {
   return null
 }
 
-type TauriShell = { shell?: { open(p: string): Promise<void> }; opener?: { openPath(p: string): Promise<void> }; os?: { platform(): Promise<string> } }
-function getTauri(): TauriShell | null {
-  if (!isTauri()) return null
-  return (window as unknown as { __TAURI__?: TauriShell }).__TAURI__ ?? null
-}
-
-export async function tauriOpen(path:string): Promise<boolean>{
+/** Открыть путь приложением по умолчанию (папка → Finder/Explorer, файл → редактор). */
+export async function tauriOpen(path: string): Promise<boolean> {
+  if (!isTauri()) return false
   const safe = sanitizeLocalPath(path)
   if (!safe) return false
-  const tauri = getTauri()
-  if(!tauri) return false
   try {
-    if(tauri.shell?.open){ await tauri.shell.open(safe); return true }
-    if(tauri.opener?.openPath && !safe.startsWith('file://')){ await tauri.opener.openPath(safe); return true }
-  } catch { return false }
-  return false
+    await shellOpen(safe)
+    return true
+  } catch {
+    return false
+  }
 }
 
-export async function tauriOpenTerminal(cwd:string): Promise<boolean>{
+/** Показать путь в файловом менеджере (Reveal in Finder). */
+export async function tauriReveal(path: string): Promise<boolean> {
+  if (!isTauri()) return false
+  const safe = sanitizeLocalPath(path)
+  if (!safe || safe.startsWith('file://')) return false
+  try {
+    await revealItemInDir(safe)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function tauriOpenTerminal(cwd: string): Promise<boolean> {
+  if (!isTauri()) return false
   const safe = sanitizeLocalPath(cwd)
-  if (!safe) return false
-  const tauri = getTauri()
-  if(!tauri) return false
+  if (!safe || safe.startsWith('file://')) return false
   try {
-    // Открываем папку в Finder/Explorer; настоящий терминал — через shell.Command в Tauri v2 (нужен plugin-shell)
-    const target = safe.startsWith('file://') ? safe : `file://${safe.replace(/^~\//,'')}`
-    if(tauri.shell?.open){ await tauri.shell.open(target); return true }
-  } catch { return false }
-  return false
+    // Честный маппинг: настоящего терминала через shell-плагин нет,
+    // открываем путь — для папки это Finder/Explorer.
+    await openerOpenPath(safe)
+    return true
+  } catch {
+    return false
+  }
 }
 
-let infoCache: { isTauri:boolean; platform:string } | null = null
-export function getTauriInfoSync(){
-  if (!infoCache) infoCache = { isTauri: isTauri(), platform: 'browser' }
+let infoCache: { isTauri: boolean; platform: string } | null = null
+export function getTauriInfoSync() {
+  if (!infoCache) infoCache = { isTauri: isTauri(), platform: isTauri() ? 'desktop' : 'browser' }
   return infoCache
 }
-export async function getTauriInfo(){
-  if (!isTauri()) return { isTauri:false, platform:'browser' }
-  if (infoCache && infoCache.platform !== 'browser') return infoCache
-  const tauri = getTauri()
-  try {
-    const platform = tauri?.os?.platform ? await tauri.os.platform() : 'desktop'
-    infoCache = { isTauri:true, platform }
-    return infoCache
-  } catch {
-    infoCache = { isTauri:true, platform:'desktop' }
-    return infoCache
-  }
+export async function getTauriInfo() {
+  // Без plugin-os платформу не определяем — достаточно факта десктопа
+  return getTauriInfoSync()
 }

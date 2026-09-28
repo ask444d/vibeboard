@@ -66,6 +66,18 @@ npm test         # 27 tests
 Requires Node 20+ (22 recommended). File System Access API is Chromium-only
 (Chrome/Edge/Arc/Brave); other browsers fall back to manual adding.
 
+## Desktop (Tauri, macOS)
+
+```bash
+npm run tauri dev                 # dev with native window
+npm run tauri build -- --debug    # debug .dmg
+npm run tauri build               # release .dmg
+```
+
+Release `.dmg` for arm64 + x64 are built by CI on tags (`git tag v1.0.0 && git push origin v1.0.0`).
+Desktop gets: native folder picker (WebKit has no File System Access API),
+real on-disk scan, native file opening, path-based watch. Requires Rust toolchain.
+
 ## Privacy
 
 Local-first: disk is read only after you explicitly pick a folder,

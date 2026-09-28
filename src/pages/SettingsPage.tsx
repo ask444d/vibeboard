@@ -1,5 +1,8 @@
 import { useStore } from '../store/useStore'
 import { scanDirectoryHandle, readFolderHandle } from '../lib/utils'
+import { isTauri } from '../lib/tauri'
+import { tauriPickFolder, scanNativeFolder, scanNativeProject } from '../lib/tauriFs'
+import { registerNativeRoot } from '../lib/watch'
 import { useState } from 'react'
 import { useT } from '../lib/useT'
 import { locales, getCoverage, getTotalKeys, getTranslatedCount } from '../lib/i18n'
@@ -51,8 +54,30 @@ export function SettingsPage(){
   const [scanning, setScanning]=useState(false)
   const [found, setFound]=useState<any[]|null>(null)
   const [selected, setSelected]=useState<Set<string>>(new Set())
+  const [rescanRoot, setRescanRoot]=useState<string|null>(null)
 
   const handleRescan = async()=>{
+    // Десктоп: нативный диалог + чтение через plugin-fs
+    if(isTauri()){
+      try{
+        const root = await tauriPickFolder()
+        if(!root) return
+        setScanning(true)
+        setFolder(root)
+        setRescanRoot(root)
+        const { projectsFound } = await scanNativeFolder(root)
+        if(!projectsFound.length){
+          alert('No projects found — create one manually via + New project')
+        }
+        setFound(projectsFound)
+        setSelected(new Set(projectsFound.map((p:any)=>p.name)))
+      }catch(e:any){
+        alert(e?.message ?? 'Failed to read folder')
+      }finally{
+        setScanning(false)
+      }
+      return
+    }
     if('showDirectoryPicker' in window){
       try{
         // @ts-ignore
@@ -78,8 +103,9 @@ export function SettingsPage(){
   const handleAdd = ()=>{
     if(!found) return
     const toAdd = found.filter((f:any)=> selected.has(f.name))
-    scanProjects(toAdd)
+    scanProjects(toAdd, rescanRoot ? { rootPath: rescanRoot } : undefined)
     setFound(null)
+    setRescanRoot(null)
   }
 
   return (
@@ -135,6 +161,17 @@ export function SettingsPage(){
         </div>
         <div className="mt-2 flex gap-2">
           <button onClick={async()=>{
+            // Десктоп: нативный диалог + реальный скан + watch-корень
+            if(isTauri()){
+              try{
+                const path = await tauriPickFolder()
+                if(!path) return
+                const info = await scanNativeProject(path)
+                const created = addProjectFromFolder({ ...info, customPath: path })
+                registerNativeRoot(created.id, path)
+              }catch(e:any){ alert(e?.message ?? 'Failed to add project') }
+              return
+            }
             if('showDirectoryPicker' in window){
               try{
                 // @ts-ignore

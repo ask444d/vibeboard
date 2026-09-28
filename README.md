@@ -183,23 +183,26 @@ The workflow is intentionally local-first: discover a project, analyze what is r
 stateDiagram-v2
   [*] --> TODO
 
-  TODO --> IN_PROGRESS: start
-  TODO --> BLOCKED: blocked
+  TODO --> IN_PROGRESS: start / pick up
   TODO --> CANCELLED: cancel
 
-  IN_PROGRESS --> REVIEW: ready for review
-  IN_PROGRESS --> DONE: complete
+  IN_PROGRESS --> REVIEW: request review
   IN_PROGRESS --> BLOCKED: blocked
+  IN_PROGRESS --> CANCELLED: cancel
+  IN_PROGRESS --> DONE: complete
 
+  REVIEW --> IN_PROGRESS: changes requested
   REVIEW --> DONE: approved
-  REVIEW --> IN_PROGRESS: continue
-  REVIEW --> BLOCKED: blocked
+  REVIEW --> CANCELLED: cancel
 
   BLOCKED --> IN_PROGRESS: unblock
   BLOCKED --> CANCELLED: cancel
 
-  DONE --> [*]
+  DONE --> ARCHIVED: archive
+  DONE --> TODO: reopen
+
   CANCELLED --> [*]
+  ARCHIVED --> [*]
 ```
 
 A task is the execution unit of the product. It is numbered per project, tracked through status changes, and can automatically be linked to the active session when completed.
@@ -208,15 +211,18 @@ A task is the execution unit of the product. It is numbered per project, tracked
 
 ```mermaid
 stateDiagram-v2
-  [*] --> RUNNING
+  [*] --> Idle
 
-  RUNNING --> PAUSED: pause
-  PAUSED --> RUNNING: resume
+  Idle --> Running: startSession(goal)
 
-  RUNNING --> FINISHED: end session
-  PAUSED --> FINISHED: end session
+  Running --> Paused: pause
+  Paused --> Running: resume
 
-  FINISHED --> [*]
+  Running --> Finalizing: stopSession
+  Paused --> Finalizing: stopSession
+
+  Finalizing --> Finished: saveSummary & attach tasks
+  Finished --> Idle: close/archive
 ```
 
 Sessions represent a focused work block: goal, notes, elapsed time, and tasks closed during that run. This is how VibeBoard connects “doing the work” with “tracking what happened”.

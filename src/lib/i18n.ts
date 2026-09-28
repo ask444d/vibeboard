@@ -215,8 +215,8 @@ const en: Dict = {
   'settings.onboarded':'Onboarded',
   'settings.projects':'Projects',
   'settings.about':'About',
-  'settings.aboutDesc':'VibeBoard is a personal, local-first command center for developers juggling many local projects. Pick your ~/Projects folder — it detects repositories, shows the stack, GitHub-style language bar, progress from tasks, git history, project health and weekly productivity — without uploading your code. It understands .vibeboard.json, drag & drop, Kanban board, translations and sharing via bundles. Built with Vite + React + Zustand (ready for Dexie/SQLite and Tauri desktop). Light by design — not Jira. Open source (MIT) — contributions welcome: see CONTRIBUTING.md and ROADMAP.md.',
-  'settings.version':'v0.1.0 MVP · Apple + Linear · TypeScript · Vite',
+  'settings.aboutDesc':'VibeBoard is a personal, local-first command center for developers juggling many local projects. Pick your ~/Projects folder — it detects repositories, shows the stack, GitHub-style language bar, progress from tasks, git history, project health and weekly productivity — without uploading your code. It understands .vibeboard.json, drag & drop, Kanban board, translations and sharing via bundles. Built with Vite + React + Zustand (ready for Dexie/SQLite and Tauri desktop). Light by design — not Jira. Open source (MIT) — contributions welcome: see CONTRIBUTING.md and ROADMAP.md. Note: this is a vibe-coded project, so bugs and rough edges are possible — report them via issues.',
+  'settings.version':'v1.0.0 · Apple + Linear · TypeScript · Vite',
   'settings.languageTitle':'Interface language',
   'settings.languageDesc':'Choose your preferred language. Changes apply instantly.',
 
@@ -481,8 +481,8 @@ const ru: Dict = {
   'settings.onboarded':'Onboarded',
   'settings.projects':'Проектов',
   'settings.about':'О проекте',
-  'settings.aboutDesc':'VibeBoard — персональный local-first дашборд для инди-разработчиков и vibe-кодеров, которые ведут десятки проектов на диске. Укажи папку ~/Projects — он найдёт репозитории, покажет стек, языковой бар как на GitHub, прогресс из задач, историю git, оценку здоровья и weekly-чарт, не загружая код в облако. Понимает .vibeboard.json, перетаскивание папок, Kanban-доску, переводы (en/ru, 100%) и шаринг бандлами. Собран на Vite + React + Zustand (готов к Dexie/SQLite и Tauri-десктопу). Лёгкий по дизайну — специально не Jira. Open source (MIT) — смотри CONTRIBUTING.md и ROADMAP.md.',
-  'settings.version':'v0.1.0 MVP · Apple + Linear · TypeScript · Vite',
+  'settings.aboutDesc':'VibeBoard — персональный local-first дашборд для инди-разработчиков и vibe-кодеров, которые ведут десятки проектов на диске. Укажи папку ~/Projects — он найдёт репозитории, покажет стек, языковой бар как на GitHub, прогресс из задач, историю git, оценку здоровья и weekly-чарт, не загружая код в облако. Понимает .vibeboard.json, перетаскивание папок, Kanban-доску, переводы (en/ru, 100%) и шаринг бандлами. Собран на Vite + React + Zustand (готов к Dexie/SQLite и Tauri-десктопу). Лёгкий по дизайну — специально не Jira. Open source (MIT) — смотри CONTRIBUTING.md и ROADMAP.md. Учти: проект полностью вайбкодный, поэтому возможны баги и недоделки — сообщай через issues.',
+  'settings.version':'v1.0.0 · Apple + Linear · TypeScript · Vite',
   'settings.languageTitle':'Язык интерфейса',
   'settings.languageDesc':'Выбери язык. Применится мгновенно.',
 

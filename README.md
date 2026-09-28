@@ -63,7 +63,7 @@ npm run preview
 npm test         # 27 tests
 ```
 
-Requires Node 18+. File System Access API is Chromium-only
+Requires Node 20+ (22 recommended). File System Access API is Chromium-only
 (Chrome/Edge/Arc/Brave); other browsers fall back to manual adding.
 
 ## Privacy

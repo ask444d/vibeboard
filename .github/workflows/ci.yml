@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test -- --run
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+  # Tauri (optional, only on linux for now)
+  tauri:
+    needs: build
+    runs-on: ubuntu-latest
+    if: false # enable when src-tauri ready
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions-rs/toolchain@v1
+        with: { toolchain: stable }
+      - run: npm ci && npm run build
+      - uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: src-tauri

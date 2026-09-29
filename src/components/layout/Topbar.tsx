@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useStore } from '../../store/useStore'
 import { useNavigate } from 'react-router-dom'
-import { locales, getCoverage } from '../../lib/i18n'
+import { getAllLocales, getCoverage } from '../../lib/i18n'
 import { useT } from '../../lib/useT'
 import { PWAInstall } from '../PWAInstall'
 
@@ -11,6 +11,8 @@ export function Topbar({ onMenu }: {onMenu?:()=>void}){
   const globalSearch = useStore(s=>s.globalSearch)
   const locale = useStore(s=>s.locale)
   const setLocale = useStore(s=>s.setLocale)
+  const customLocales = useStore(s=>s.customLocales)
+  const allLocales = useMemo(()=> getAllLocales(), [customLocales])
   const [open, setOpen] = useState(false)
   const [activeIdx, setActiveIdx] = useState(0)
   const [dark, setDark] = useState<boolean>(()=> document.documentElement.classList.contains('dark'))
@@ -106,13 +108,13 @@ export function Topbar({ onMenu }: {onMenu?:()=>void}){
           <PWAInstall />
           <div className="relative">
             <button onClick={()=> setLangOpen(v=>!v)} className="h-9 px-2.5 rounded-xl border bg-white dark:bg-zinc-800 flex items-center gap-1.5 text-xs font-medium">
-              <span>{locales.find(l=>l.code===locale)?.flag}</span>
-              <span className="hidden sm:inline">{locales.find(l=>l.code===locale)?.label}</span>
+              <span>{allLocales.find(l=>l.code===locale)?.flag ?? '🌐'}</span>
+              <span className="hidden sm:inline">{allLocales.find(l=>l.code===locale)?.label ?? locale}</span>
               <span className="text-zinc-400">▾</span>
             </button>
             {langOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-900 border rounded-xl shadow-xl overflow-hidden z-50">
-                {locales.map(l=>(
+                {allLocales.map(l=>(
                   <button
                     key={l.code}
                     onClick={()=>{ setLocale(l.code); setLangOpen(false)}}

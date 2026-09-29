@@ -17,7 +17,7 @@ FileSystemHandle (user gesture)
 
 ## Key modules
 - `utils.ts` — `generateProjectCode`, `calcProgress`, `scanDirectoryHandle`, `readFolderHandle`, `collectVirtualFiles`, `readVibeConfig`
-- `i18n.ts` — en/ru dicts, `getCoverage()`
+- `i18n.ts` — en/ru/de/fr/es/zh dicts + custom JSON uploads, `getCoverage()`
 - `health.ts` — `computeHealth()` = progress*0.35 + blocked*0.25 + freshness*0.2 + git*0.2
 - `git.ts` — `.git/logs/HEAD` parser (browser) + `isomorphic-git` for Tauri
 - `tauri.ts` — `isTauri()`, `tauriOpen()`

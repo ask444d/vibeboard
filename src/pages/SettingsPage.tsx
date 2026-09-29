@@ -3,9 +3,9 @@ import { scanDirectoryHandle, readFolderHandle } from '../lib/utils'
 import { isTauri } from '../lib/tauri'
 import { tauriPickFolder, scanNativeFolder, scanNativeProject } from '../lib/tauriFs'
 import { registerNativeRoot } from '../lib/watch'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useT } from '../lib/useT'
-import { locales, getCoverage, getTotalKeys, getTranslatedCount } from '../lib/i18n'
+import { getAllLocales, getCoverage, getTotalKeys, getTranslatedCount } from '../lib/i18n'
 import { AGENT_META, getAgentHook, setAgentHook, type AgentId } from '../lib/agents'
 
 function AgentHookField({ agent }: { agent: AgentId }) {
@@ -50,7 +50,13 @@ export function SettingsPage(){
   const addProjectFromFolder = useStore(s=>s.addProjectFromFolder)
   const locale = useStore(s=>s.locale)
   const setLocale = useStore(s=>s.setLocale)
+  const customLocales = useStore(s=>s.customLocales)
+  const importCustomLocale = useStore(s=>s.importCustomLocale)
+  const removeCustomLocale = useStore(s=>s.removeCustomLocale)
+  const exportLocaleTemplate = useStore(s=>s.exportLocaleTemplate)
   const t = useT()
+  const [langMsg, setLangMsg]=useState<string|null>(null)
+  const allLocales = useMemo(()=> getAllLocales(), [customLocales])
   const [scanning, setScanning]=useState(false)
   const [found, setFound]=useState<any[]|null>(null)
   const [selected, setSelected]=useState<Set<string>>(new Set())
@@ -116,29 +122,73 @@ export function SettingsPage(){
         <h3 className="font-semibold">{t('settings.languageTitle')}</h3>
         <p className="text-sm text-zinc-500 mt-1">{t('settings.languageDesc')}</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          {locales.map(l=>{
+          {allLocales.map(l=>{
             const cov = getCoverage(l.code)
             const count = getTranslatedCount(l.code)
             const total = getTotalKeys()
             return (
-            <button
+            <div
               key={l.code}
-              onClick={()=> setLocale(l.code)}
-              className={`p-3 rounded-xl border flex flex-col gap-2 text-left ${locale===l.code?'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-zinc-900 dark:border-white':'bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700'}`}
+              className={`p-3 rounded-xl border flex flex-col gap-2 text-left ${locale===l.code?'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-zinc-900 dark:border-white':'bg-zinc-50 dark:bg-zinc-800'}`}
             >
               <div className="flex items-center gap-3 w-full">
-                <span className="text-xl">{l.flag}</span>
-                <div className="flex-1">
-                  <div className="text-sm font-medium">{l.label}</div>
-                  <div className="text-xs opacity-60">{l.code.toUpperCase()} · {count}/{total}</div>
-                </div>
-                {locale===l.code ? <span>✓</span> : <span className="text-xs font-medium opacity-60">{cov}%</span>}
+                <button onClick={()=> setLocale(l.code)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                  <span className="text-xl">{l.flag}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="text-sm font-medium flex items-center gap-1.5">{l.label}
+                      {l.custom && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">{t('settings.customLangsCustom')}</span>}
+                    </span>
+                    <span className="text-xs opacity-60 block">{l.code.toUpperCase()} · {count}/{total}</span>
+                  </span>
+                  {locale===l.code ? <span>✓</span> : <span className="text-xs font-medium opacity-60">{cov}%</span>}
+                </button>
+                {l.custom && (
+                  <button
+                    onClick={()=>{ removeCustomLocale(l.code); setLangMsg(t('settings.customLangsRemoved')) }}
+                    title={t('common.delete')}
+                    className="shrink-0 w-7 h-7 rounded-full border border-transparent opacity-60 hover:opacity-100 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900 text-sm"
+                  >✕</button>
+                )}
               </div>
-              <div className="w-full h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+              <button onClick={()=> setLocale(l.code)} className="w-full h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden text-left">
                 <div className="h-full rounded-full transition-all" style={{ width:`${cov}%`, background: cov===100 ? '#10b981' : cov>80 ? '#f59e0b' : '#ef4444' }} />
-              </div>
-            </button>
+              </button>
+            </div>
           )})}
+        </div>
+        <div className="mt-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border p-3">
+          <div className="text-xs font-medium">{t('settings.customLangsTitle')}</div>
+          <div className="text-xs text-zinc-500 mt-0.5">{t('settings.customLangsDesc')}</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <label className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-xs cursor-pointer">
+              {t('settings.customLangsUpload')}
+              <input
+                type="file" accept="application/json,.json" className="hidden"
+                onChange={async e=>{
+                  const f = e.target.files?.[0]
+                  e.target.value = ''
+                  if(!f) return
+                  const res = importCustomLocale(await f.text())
+                  if(!res.ok){
+                    setLangMsg(t(`settings.customLangsErr${res.error === 'bad-file' ? 'BadFile' : res.error === 'bad-code' ? 'BadCode' : res.error === 'code-taken' ? 'CodeTaken' : 'TooFew'}`))
+                  } else {
+                    setLangMsg(`${t(res.updated ? 'settings.customLangsUpdated' : 'settings.customLangsAdded')}: ${res.code} · ${res.count}/${getTotalKeys()}`)
+                  }
+                }}
+              />
+            </label>
+            <button
+              onClick={()=>{
+                const blob = new Blob([exportLocaleTemplate()], { type:'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url; a.download = 'vibeboard-locale-template.json'; a.click()
+                URL.revokeObjectURL(url)
+              }}
+              className="px-3 py-1.5 rounded-lg border bg-white dark:bg-zinc-900 text-xs"
+            >{t('settings.customLangsTemplate')}</button>
+          </div>
+          {langMsg && <div className="mt-2 text-xs text-zinc-500">{langMsg}</div>}
         </div>
         <div className="mt-4 rounded-xl bg-zinc-50 dark:bg-zinc-800 border p-3 flex items-center justify-between">
           <div>
@@ -146,7 +196,7 @@ export function SettingsPage(){
             <div className="text-xs text-zinc-500">{getTranslatedCount(locale)}/{getTotalKeys()} ключей · {getCoverage(locale)}%</div>
           </div>
           <div className="text-right">
-            <div className="text-xs font-mono">{locales.find(l=>l.code===locale)?.label}</div>
+            <div className="text-xs font-mono">{allLocales.find(l=>l.code===locale)?.label}</div>
             <div className="text-[11px] text-zinc-500">Текущий язык</div>
           </div>
         </div>

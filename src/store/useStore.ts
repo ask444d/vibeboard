@@ -9,9 +9,12 @@ import { createSeedData } from '../lib/seed'
 
 function initialLocale(): Locale {
   const s = safeGet('vibeboard-locale')
-  if (s === 'en' || s === 'ru') return s
+  if (s && /^[a-z-]{2,12}$/i.test(s)) return s.toLowerCase()
   try {
-    if (typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('ru')) return 'ru'
+    const nav = typeof navigator !== 'undefined' ? navigator.language?.toLowerCase() ?? '' : ''
+    for(const code of ['ru','de','fr','es','zh'] as const){
+      if(nav.startsWith(code)) return code
+    }
   } catch { /* ignore */ }
   return 'en'
 }
@@ -24,6 +27,7 @@ function maxNum(nums: number[]): number {
 interface SearchResult { type:'project'|'task'|'idea'|'note', id:string, projectId?:string, title:string, subtitle:string, match?:string }
 
 import type { Locale } from '../lib/i18n'
+import { localeTemplate, parseLocaleFile, setCustomLocales, type CustomLocaleInfo } from '../lib/i18n'
 
 interface AppState {
   folder: string | null
@@ -39,6 +43,7 @@ interface AppState {
   projectFilter: ProjectStatus | 'ALL'
   taskFilter: TaskStatus | 'ALL'
   searchQuery: string
+  customLocales: CustomLocaleInfo[]
   // actions
   setFolder: (path:string)=>void
   scanProjects: (found:{name:string, files:string[], packageJson?:any, hasGit:boolean, vfiles?:ScannedProject['vfiles'], gitHistory?:ScannedProject['gitHistory']}[], opts?:{rootPath?:string})=>void
@@ -75,6 +80,9 @@ interface AppState {
   globalSearch:(q:string)=>SearchResult[]
   exportProject:(id:string)=>string|null
   importProject:(json:string)=>{ok:boolean, error?:string, code?:string}
+  importCustomLocale:(json:string)=>{ok:true, code:string, updated:boolean, count:number}|{ok:false, error:string}
+  removeCustomLocale:(code:string)=>void
+  exportLocaleTemplate:()=>string
 }
 
 export const useStore = create<AppState>()(persist((set,get)=>({
@@ -90,6 +98,7 @@ export const useStore = create<AppState>()(persist((set,get)=>({
   projectFilter: 'ALL',
   taskFilter: 'ALL',
   searchQuery: '',
+  customLocales: [],
 
   setFolder: (path)=> set({ folder:path, hasOnboarded:true }),
   scanProjects: (found, opts)=>{
@@ -409,6 +418,27 @@ export const useStore = create<AppState>()(persist((set,get)=>({
   setProjectFilter:(f)=> set({projectFilter:f}),
   setTaskFilter:(f)=> set({taskFilter:f}),
   setSearchQuery:(q)=> set({searchQuery:q}),
+  importCustomLocale:(json)=>{
+    let data: unknown
+    try{ data = JSON.parse(json) }catch{ return { ok:false as const, error:'bad-file' } }
+    const parsed = parseLocaleFile(data)
+    if(!parsed.ok) return { ok:false as const, error: parsed.error }
+    const list = [...get().customLocales]
+    const idx = list.findIndex(l=> l.code === parsed.value.code)
+    const updated = idx >= 0
+    if(updated) list[idx] = parsed.value
+    else list.push(parsed.value)
+    set({ customLocales: list })
+    setCustomLocales(list)
+    return { ok:true as const, code: parsed.value.code, updated, count: Object.keys(parsed.value.dict).length }
+  },
+  removeCustomLocale:(code)=>{
+    const next = get().customLocales.filter(l=> l.code !== code)
+    set({ customLocales: next })
+    setCustomLocales(next)
+    if(get().locale === code) get().setLocale('en')
+  },
+  exportLocaleTemplate:()=> localeTemplate(),
   resetToSeed:()=>{
     const seed = createSeedData()
     set({ projects: seed.projects, tasks: seed.tasks, ideas: seed.ideas, notes: seed.notes, sessions: seed.sessions, activities: seed.activities, folder: seed.folder, hasOnboarded:true })
@@ -528,8 +558,8 @@ export const useStore = create<AppState>()(persist((set,get)=>({
   },
 }),{
   name:'vibeboard-store',
-  partialize:(s)=> ({ projects:s.projects, tasks:s.tasks, ideas:s.ideas, notes:s.notes, sessions:s.sessions, activities:s.activities, folder:s.folder, hasOnboarded:s.hasOnboarded, locale:s.locale }),
-  version:5,
+  partialize:(s)=> ({ projects:s.projects, tasks:s.tasks, ideas:s.ideas, notes:s.notes, sessions:s.sessions, activities:s.activities, folder:s.folder, hasOnboarded:s.hasOnboarded, locale:s.locale, customLocales:s.customLocales }),
+  version:6,
   migrate: (persistedState: any, version: number)=>{
     if(version < 3){
       return {
@@ -566,6 +596,11 @@ export const useStore = create<AppState>()(persist((set,get)=>({
         return i
       })
       if(ps && typeof ps === 'object' && 'selectedProjectCode' in ps) delete ps.selectedProjectCode
+      return ps
+    }
+    if(version < 6){
+      const ps = persistedState as any
+      if(!Array.isArray(ps.customLocales)) ps.customLocales = []
       return ps
     }
     return persistedState as any

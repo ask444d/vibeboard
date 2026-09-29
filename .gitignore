@@ -25,3 +25,10 @@ dist-ssr
 
 # Tauri
 src-tauri/target/
+
+# VS Code extension build output
+extensions/vscode/out/
+dist-vscode/
+
+src-tauri/target/
+src-tauri/gen/

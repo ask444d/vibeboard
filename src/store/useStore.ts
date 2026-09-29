@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
+import { hybridStorage } from '../lib/sqliteStore'
 import type { Project, Task, Idea, Note, Session, Activity, ProjectType, ProjectStatus, TaskStatus, TaskPriority } from '../lib/types'
 import { generateProjectCode, calcProgress, uid, nowIso, analyzeLanguages, detectTechStack, analyzeLanguagesFromHandle, newestCommitIso, type ScannedProject } from '../lib/utils'
 import { readGitHistory } from '../lib/git'
@@ -558,6 +559,7 @@ export const useStore = create<AppState>()(persist((set,get)=>({
   },
 }),{
   name:'vibeboard-store',
+  storage: createJSONStorage(()=> hybridStorage),
   partialize:(s)=> ({ projects:s.projects, tasks:s.tasks, ideas:s.ideas, notes:s.notes, sessions:s.sessions, activities:s.activities, folder:s.folder, hasOnboarded:s.hasOnboarded, locale:s.locale, customLocales:s.customLocales }),
   version:6,
   migrate: (persistedState: any, version: number)=>{

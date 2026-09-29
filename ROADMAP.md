@@ -15,11 +15,11 @@ Public roadmap mirrors `GitHub Projects` board (same Kanban as `Tasks`).
 - [x] Native folder pick + scan via plugin-fs/dialog (`src/lib/tauriFs.ts`), native watch roots
 - [x] Native `open` in Finder/Editor via plugin-shell/opener (`src/lib/tauri.ts`)
 - [x] CI `.dmg` for macOS arm64 + x64 on tags `v*` (draft release)
-- [ ] `src-tauri/tauri.conf.json` → SQLite (`src/lib/db.ts` schema) replaces `localStorage`
-- [ ] `y-crdt` sync over LAN (Tauri)
+- [x] SQLite persist on desktop (`src/lib/sqliteStore.ts`, kv table, transparent localStorage import)
+- [ ] Full relational schema (`src/lib/db.ts`) + `y-crdt` sync over LAN (Tauri)
 
 ## 1.2 Ecosystem
-- [ ] `vibeboard-vscode` extension (status bar `WEB-001 72%`)
+- [x] `vibeboard-status` VS Code extension (status bar `CODE · done/total · %`, `extensions/vscode/`)
 - [ ] `vibeboard-zed` (zed://)
 - [ ] GitHub App read-only sync (issues→Ideas)
 

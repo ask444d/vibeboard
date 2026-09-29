@@ -1,0 +1,61 @@
+{
+  "name": "vibeboard-status",
+  "displayName": "VibeBoard Status",
+  "description": "Live VibeBoard project stats in the VS Code status bar. Reads the local VibeBoard SQLite database — no accounts, no cloud.",
+  "version": "0.1.0",
+  "publisher": "vibeboard",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ask444d/vibeboard"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "vibeboard.selectProject", "title": "VibeBoard: Select Project" },
+      { "command": "vibeboard.refresh", "title": "VibeBoard: Refresh Status" },
+      { "command": "vibeboard.openFolder", "title": "VibeBoard: Reveal Project Folder in OS" },
+      { "command": "vibeboard.openDashboard", "title": "VibeBoard: Open Dashboard App" }
+    ],
+    "configuration": {
+      "title": "VibeBoard",
+      "properties": {
+        "vibeboard.dbPath": {
+          "type": "string",
+          "default": "",
+          "description": "Override path to vibeboard.db (file or directory). Empty = auto-detect per OS."
+        },
+        "vibeboard.refreshIntervalSec": {
+          "type": "number",
+          "default": 30,
+          "minimum": 5,
+          "description": "How often to re-read the database, in seconds."
+        },
+        "vibeboard.dashboardCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Shell command to open the VibeBoard dashboard (e.g. macOS: open -a VibeBoard). Empty = auto per OS."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --out ../../dist-vscode/"
+  },
+  "dependencies": {
+    "sql.js": "^1.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/sql.js": "^1.4.9",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.6.0"
+  }
+}

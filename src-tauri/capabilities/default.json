@@ -13,6 +13,8 @@
     { "identifier": "fs:allow-exists", "allow": [{ "path": "$HOME/**" }] },
     "shell:allow-open",
     "opener:allow-open-path",
-    "opener:allow-reveal-item-in-dir"
+    "opener:allow-reveal-item-in-dir",
+    "sql:default",
+    "sql:allow-execute"
   ]
 }
